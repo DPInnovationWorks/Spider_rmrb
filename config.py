@@ -1,0 +1,9 @@
+MONGO_URL = 'localhost'
+MONGO_DB = 'rmrb'
+MONGO_TABLE = 'rmrb_earthquake'
+
+KEYWORD = '地震'
+
+PROXY_POOL_URL = 'http://127.0.0.1:5010/get/'
+
+COOKIE = 'wdcid=4a8fbeb834e32af8; ALLYESID4=0D896B47679DC703; sso_c=0; JSESSIONID=64F73D6B1C1D7031A8B42B5CEB09B73D; pageNo=1'
