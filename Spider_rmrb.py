@@ -75,10 +75,6 @@ def get_page_index(page,headers):
             }
     url = 'http://data.people.com.cn/rmrb/s?' + urlencode(data)
     try:
-        # response = requests.get(url,headers=headers,timeout=(3,7))
-        # if response.status_code == 200:
-        #     return response.text
-        # return None
         html = get_html(url,headers)
         return html
     except RequestException:
@@ -95,10 +91,6 @@ def parse_page_index(html):
             
 def get_page_detail(url,headers):
     try:
-        # response = requests.get(url,headers=headers,timeout=(3,7))
-        # if response.status_code == 200:
-        #     return response.text
-        # return None
         html = get_html(url,headers)
         return html
     except RequestException:
@@ -175,7 +167,6 @@ def main(page):
         }
     html = get_page_index(page,headers)
     for url in parse_page_index(html):
-        # print(url)
         if url:
             html = get_page_detail(url,headers)
             if html:
@@ -186,11 +177,6 @@ def main(page):
                 pass
 
 if __name__ == '__main__':
-#     groups = [x*20 for x in range(GROUP_START,GROUP_END + 1)]
-# #    pool = Pool()
-# #    pool.map(main,groups)
-#     for group in groups:
-#         main(group)
     for i in range(1,1061):
         if i==200 or i==400 or i==600 or i==800:
             time.sleep(1800)
