@@ -57,7 +57,7 @@ def get_html(url,headers,count = 1,):
                 return None
         if response.status_code == 429:
             print('429 error')
-            time.sleep(random.randint(1800,3600))
+            time.sleep(random.randint(1800,3000))
             return get_html(url, headers)
     except ConnectionError as e:
         print('Error Occured',e.args)
@@ -65,9 +65,9 @@ def get_html(url,headers,count = 1,):
         count += 1
         return get_html(url,headers,count)
 
-def get_page_index(page,headers):
+def get_page_index(page,headers,keyword):
     data = {
-            'qs': {"cds":[{"cdr":"AND","cds":[{"fld":"title","cdr":"OR","hlt":"true","vlr":"OR","val":'地震'},{"fld":"subTitle","cdr":"OR","hlt":"false","vlr":"OR","val":'地震'},{"fld":"introTitle","cdr":"OR","hlt":"false","vlr":"OR","val":'地震'},{"fld":"contentText","cdr":"OR","hlt":"true","vlr":"OR","val":'地震'}]}],"obs":[{"fld":"dataTime","drt":"DESC"}]},
+            'qs': {"cds":[{"cdr":"AND","cds":[{"fld":"title","cdr":"OR","hlt":"true","vlr":"OR","val":keyword},{"fld":"subTitle","cdr":"OR","hlt":"false","vlr":"OR","val":keyword},{"fld":"introTitle","cdr":"OR","hlt":"false","vlr":"OR","val":keyword},{"fld":"contentText","cdr":"OR","hlt":"true","vlr":"OR","val":keyword}]}],"obs":[{"fld":"dataTime","drt":"DESC"}]},
             'tr': 'A',
             'ss': '1',
             'pageNo': page,
@@ -75,11 +75,15 @@ def get_page_index(page,headers):
             }
     url = 'http://data.people.com.cn/rmrb/s?' + urlencode(data)
     try:
+        # response = requests.get(url,headers=headers,timeout=(3,7))
+        # if response.status_code == 200:
+        #     return response.text
+        # return None
         html = get_html(url,headers)
         return html
     except RequestException:
         print('打开索引页错误')
-        time.sleep(random.randint(600,1800))
+        time.sleep(random.randint(10))
         return get_page_index(page,headers)
     
 def parse_page_index(html):
@@ -91,7 +95,12 @@ def parse_page_index(html):
             
 def get_page_detail(url,headers):
     try:
+        # response = requests.get(url,headers=headers,timeout=(3,7))
+        # if response.status_code == 200:
+        #     return response.text
+        # return None
         html = get_html(url,headers)
+        # print(html)
         return html
     except RequestException:
         print('打开详情页错误')
@@ -119,6 +128,10 @@ def parse_page_detail(html):
         else:
             author = None
         dates = soup.select('.sha_left span')
+        if len(dates)>=3:
+            type1 = dates[2].text
+        else:
+            type1 = None
         contents = soup.select('#FontZoom')
         for c in contents:
             content = c.get_text()
@@ -128,18 +141,19 @@ def parse_page_detail(html):
             '作者':author,
             '日期':dates[0].text,
             '版面':dates[1].text,
-            '类型':dates[2].text,
+            '类型':type1,
             '正文':content,
         }
     except IndexError:
         print('无法访问，可能未登录')
+        time.sleep(random.randint(20,30))
         pass
 
 def save_to_mongo(data):
-    if db[MONGO_TABLE].update({'标题': data['标题']}, {'$set': data}, True):
+    if db[MONGO_TABLE].update({'正文': data['正文']}, {'$set': data}, True):
         print('Saved to Mongo', data)
     else:
-        print('Saved to Mongo Failed', data['标题'])
+        print('Saved to Mongo Failed', data['正文'])
 
 def download_images(url):
     print('正在下载：',url)
@@ -160,28 +174,47 @@ def save_images(content):
             file.write(content)
             file.close
     
-def main(page):
+def main():
     headers = {
         'Cookie':COOKIE,
         'user-agent':'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/70.0.3538.102 Safari/537.36'
         }
-    html = get_page_index(page,headers)
-    for url in parse_page_index(html):
-        if url:
-            html = get_page_detail(url,headers)
-            if html:
-                result = parse_page_detail(html)
-                if result:
-                    save_to_mongo(result)
-                    time.sleep(random.randint(5,20))
-                pass
+    for kw in KEYWORD:
+        time.sleep(10)
+        print('keyword:',kw)
+        for p in PAGE:
+            if p % 30 == 0:
+                time.sleep(100)
+                print('Page:', p)
+                html = get_page_index(p, headers, kw)
+                for url in parse_page_index(html):
+                    # print(url)
+                    if url:
+                        html = get_page_detail(url, headers)
+                        if html:
+                            result = parse_page_detail(html)
+                            if result:
+                                save_to_mongo(result)
+                                time.sleep(random.randint(7, 20))
+                            pass
+            else:
+                print('Page:', p)
+                html = get_page_index(p, headers, kw)
+                for url in parse_page_index(html):
+                    # print(url)
+                    if url:
+                        html = get_page_detail(url, headers)
+                        if html:
+                            result = parse_page_detail(html)
+                            if result:
+                                save_to_mongo(result)
+                                time.sleep(random.randint(7, 20))
+                            pass
 
 if __name__ == '__main__':
-    for i in range(1,1061):
-        if i==200 or i==400 or i==600 or i==800:
-            time.sleep(1800)
-            print('Page:',i)
-            main(i)
-        else:
-            print('Page:', i)
-            main(i)
+#     groups = [x*20 for x in range(GROUP_START,GROUP_END + 1)]
+# #    pool = Pool()
+# #    pool.map(main,groups)
+#     for group in groups:
+#         main(group)
+    main()
